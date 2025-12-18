@@ -1,0 +1,3 @@
+[submodule "experiments/semantic_mutation/WAF-A-Mole"]
+	path = experiments/semantic_mutation/WAF-A-Mole
+	url = git@github.com:gquetel/WAF-A-MoLE.git

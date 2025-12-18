@@ -1,0 +1,36 @@
+{
+  "pins": {
+    "nixpkgs": {
+      "type": "Channel",
+      "name": "nixos-25.05",
+      "url": "https://releases.nixos.org/nixos/25.05/nixos-25.05.808080.ddae11e58c0c/nixexprs.tar.xz",
+      "hash": "0qrb2hgkgfra1ljcbkdg7v0vnszy6ibnidari30fzih31qkk6fnh"
+    },
+    "nixpkgs_mysql_8_4_3": {
+      "type": "Git",
+      "repository": {
+        "type": "GitHub",
+        "owner": "nixos",
+        "repo": "nixpkgs"
+      },
+      "branch": "nixos-24.11",
+      "submodules": false,
+      "revision": "3f0a8ac25fb674611b98089ca3a5dd6480175751",
+      "url": "https://github.com/nixos/nixpkgs/archive/3f0a8ac25fb674611b98089ca3a5dd6480175751.tar.gz",
+      "hash": "10i7fllqjzq171afzhdf2d9r1pk9irvmq5n55h92rc47vlaabvr4"
+    },
+    "ourairports_data": {
+      "type": "Git",
+      "repository": {
+        "type": "Git",
+        "url": "https://github.com/davidmegginson/ourairports-data.git"
+      },
+      "branch": "main",
+      "submodules": false,
+      "revision": "68b09a41f62ae0e0f0927f1cdb5fb10d0a65df18",
+      "url": null,
+      "hash": "09wpy9anzd0305xaaiy0y4cvsgpbv59vvbqk8n48vks0jcl77js9"
+    }
+  },
+  "version": 5
+}

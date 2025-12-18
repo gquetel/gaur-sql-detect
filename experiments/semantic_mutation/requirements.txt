@@ -1,0 +1,9 @@
+numpy==2.2.5
+keras==3.12
+scikit_learn==1.6.1
+joblib==1.5.2
+sqlparse==0.5.4
+networkx==3.6.1
+click==8.3.1
+tensorflow==2.20.0
+./WAF-A-Mole

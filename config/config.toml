@@ -1,0 +1,10 @@
+[generic]
+seed = 7
+trace_type = "expert"
+
+[mysql]
+database = "dataset"
+user = "tata"
+password = "tata"
+prefix = "/home/infres/gquetel/tmp/lame26/"
+
