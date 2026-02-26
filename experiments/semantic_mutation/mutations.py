@@ -9,13 +9,13 @@ import time
 project_root = os.path.abspath(os.path.join(os.getcwd(), "..", ".."))
 sys.path.append(project_root)
 
-import xpgaur
+import gaur_sqld
 
-import xpgaur.config as config
+import gaur_sqld.config as config
 from constants import AutoEncoder_Li, AutoEncoder_SecureBERT
-from xpgaur.utils.trainers import init_device
-from xpgaur.models.Gaur import AutoEncoder_Gaur
-from xpgaur.utils.traces_collector import get_traces_from_df
+from gaur_sqld.utils.trainers import init_device
+from gaur_sqld.models.Gaur import AutoEncoder_Gaur
+from gaur_sqld.utils.traces_collector import get_traces_from_df
 
 from wafamole.models.model import Model
 from wafamole.evasion.evasion import EvasionEngine
@@ -96,7 +96,7 @@ def load_AutoEncoder_Li_model() -> AutoEncoder_Li:
     model_name = "Li and AE-scaler"
     model = AutoEncoder_Li(
         device=init_device(),
-        project_paths=xpgaur.ppths,
+        project_paths=gaur_sqld.ppths,
         learning_rate=0.005,
         epochs=100,
         batch_size=8192,
@@ -110,7 +110,7 @@ def load_secureBERT_ae_model() -> AutoEncoder_SecureBERT:
     model_name = "SecureBERT and AE"
     model = AutoEncoder_SecureBERT(
         device=init_device(),
-        project_paths=xpgaur.ppths,
+        project_paths=gaur_sqld.ppths,
         learning_rate=0.001,
         epochs=100,
         batch_size=512,
@@ -258,7 +258,7 @@ if __name__ == "__main__":
     # a representation of the features in the paper, this will be more coherent
     # than displaying features out of nowhere.
     trace_type = "mistral"
-    xpgaur.update_location_mysqlfiles(trace_type)
+    gaur_sqld.update_location_mysqlfiles(trace_type)
 
     # Get  random templates of queries and their payloads.
     tandp = get_templates_and_payloads(100)

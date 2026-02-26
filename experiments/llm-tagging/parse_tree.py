@@ -16,8 +16,8 @@ import pandas as pd
 import random
 import argparse
 
-import xpgaur
-from xpgaur.utils.traces_collector import get_traces_from_df
+import gaur_sqld
+from gaur_sqld.utils.traces_collector import get_traces_from_df
 
 
 def init_args() -> argparse.Namespace:
@@ -108,7 +108,7 @@ def print_parse_tree(trace: str, kind_to_name: dict):
 
 
 if __name__ == "__main__":
-    seed = xpgaur.seed
+    seed = gaur_sqld.seed
     np.random.seed(seed)
     random.seed(seed)
 

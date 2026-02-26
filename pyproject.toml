@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gaur-sql-detect"
+version = "0.1.0"
+description = "SQL injection detection using GAUR-instrumented MySQL traces"
+requires-python = ">=3.11"
+dependencies = [
+    "pandas",
+    "numpy",
+    "tqdm",
+    "mysql-connector-python",
+    "scipy",
+    "scikit-learn",
+    "plotly",
+    "matplotlib",
+    "kaleido",
+    "tabulate",
+    "torch",
+    "transformers",
+    "accelerate",
+    "sentence-transformers",
+    "evaluate",
+]
+
+[project.scripts]
+gaur-sql-detect = "gaur_sqld.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["gaur_sqld*"]
+
+[tool.setuptools.package-data]
+gaur_sqld = ["py.typed", "config/config.toml"]

@@ -14,6 +14,9 @@ shellWithCuda.nix
 cache
 data/*.csv
 *.csv
-venv-3.10.12
-venv-3.12.3
+venv-3.13.11
+venv-3.12.12
 result
+dist/
+build/
+*.egg-info/

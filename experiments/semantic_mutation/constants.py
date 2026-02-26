@@ -14,12 +14,12 @@ import torch.nn.functional as F
 import transformers
 from transformers import RobertaTokenizerFast
 
-# This is a hack, to locate xpgaur.
+# This is a hack, to locate gaur_sqld.
 project_root = os.path.abspath(os.path.join(os.getcwd(), "..", ".."))
 sys.path.append(project_root)
 
-from xpgaur.models.Li import pre_process_for_li
-from xpgaur.utils.constants import ProjectPaths
+from gaur_sqld.models.Li import pre_process_for_li
+from gaur_sqld.utils.constants import ProjectPaths
 
 logger = logging.getLogger(__name__)
 

@@ -1,68 +1,112 @@
-# SQL Injection Detection experiments
+# GAUR-SQL-Detect
 
-Code for the evaluations presented in TODO.
+Code for the evaluations presented in:
 
-This repository heavily relies on instrumented version of MySQL servers using the tool [gaur](https://github.com/gquetel/gaur), that can be obtained from [gaur-instrumented-apps](https://github.com/gquetel/gaur-instrumented-apps). 
+> Grégor Quetel, Pierre-François Gimenez, Thomas Robert, Laurent Pautet.
+> **Parser Instrumentation for Semantic-Aware Applicative Intrusion Detection**
+> IFIP SEC 2025, June 2026, Perth, Australia.
 
-## Installation
+This repository relies on instrumented MySQL servers built with [gaur](https://github.com/gquetel/gaur), available from [gaur-instrumented-apps](https://github.com/gquetel/gaur-instrumented-apps).
 
-Regarding the development environment to run the python scripts, we provide a [shell.nix](./shell.nix) file to obtain a custom environment with the correct python version and all required dependencies. Simply run `nix-shell` to activate it. Alternatively, we provide a `requirements.txt` file containing all required dependencies.
+---
 
-However, most of the experiments require a running MySQL instrumented server. Instructions are provided in the [gaur-instrumented-apps](https://github.com/gquetel/gaur-instrumented-apps) repository. 
+## Environment
 
+Our experiments heavily relies on the [Nix](https://nixos.org/download) build system. [gaur-instrumented-apps](https://github.com/gquetel/gaur-instrumented-apps) provide derivations to build, initialize and run instrumented MySQLs. This codebase requires access to instrumented MySQLs. Use [shell.nix](./shell.nix) to enter a reproducible and pinned development environment. 
+
+Alternatively, you could manually patch, build, initialize and run a MySQL server then install the required dependencies using:  
+
+```bash
+pip install -e .
+```
 
 ### Dataset
+We used the [Superviz25-SQL](https://zenodo.org/records/17086037) dataset. By default, it is expected at `./data/dataset.csv`.
 
-Our experiments mostly rely on the SQL Injection Detection [Superviz25-SQL](https://zenodo.org/records/17086037) dataset described in: Grégor Quetel, Eric Alata, Pierre-François Gimenez, Thomas Robert, Laurent Pautet. Superviz25-SQL: High-Quality Dataset to Empower Unsupervised SQL Injection Detection Systems. ESORICS - ANUBIS 2025 - 1st International Workshop on Assessment with New methodologies, Unified Benchmarks, and environments, of Intrusion detection and response Systems, Sep 2025, Toulouse, France. pp.1-20.
+---
 
-## Evaluation 
+## Usage 
 
-The script run_eval.py evaluates Applicative-level Intrusion Detection Systems. Several arguments can be provided, the main ones being: 
-- dataset: Filepath to the dataset. Defaults to './data/dataset.csv
-- models: Models to train (e.g., --models ae). Use 'all' to run all of them (ocsvm, ae, ocsvm_ruleid, ae_ruleid)
-- trace-type: Define which trace format to expect to collect. Valid values are: all, expert, chatgpt, claude, gpt-oss, llama, mistral. It also determines the expected path to the MySQL server socket.  
+###  Obtaining features from GAUR 
 
-For further configuration, the [configuration file](config/config.toml) can be modified. For instance, to update `prefix` the path to the MySQL servers datadir and sockets.
+We tried to provide a self-sufficient public API for obtaining features from `gaur` instrumented MySQL. The following code snippet allows you to obtain such features from a given DataFrame (it must contain a `full_query` column). 
 
-For instance: 
+```python
+import gaur_sqld
+import pandas as pd
+
+# Optional: override server prefix (default: ~/tmp/)
+gaur_sqld.configure(prefix="~/tmp/")
+
+df = pd.read_csv("data/dataset.csv")
+traces = gaur_sqld.get_traces_from_df(df)
+features = gaur_sqld.pre_process_for_gaur(traces, mode="expert")
 ```
-python3 ./run_eval.py  --trace-type=mistral --models ae
+
+`get_traces_from_df()` first checks whether a socket already exists at the expected path (`<prefix>/<hostname>/mysqld-<trace_type>/socket`). If it does, the running server is used. If no socket is found and Nix is available, the library will automatically:
+
+1. Clone `gaur-instrumented-apps` to `~/.local/share/gaur-sqld/gaur-instrumented-apps/`
+2. Build the instrumented MySQL server with `nix-build`
+3. Start the server and wait for its socket
+
+If neither condition is met, a `GaurServerError` is raised with instructions for manual setup.
+
+---
+
+### Configuration
+
+By default the bundled `config/config.toml` is used. Pass a custom TOML file with the `--config` flag:
+
+```bash
+gaur-sql-detect --config /path/to/my.toml
 ```
-will train an autoencoder expected to be able to connect to a MySQL server instrumented using GAUR (Mistral). 
 
-Note: the ruleid models expect an expert instrumented server to be running. 
+The `prefix` key in `[mysql]` sets the directory that contains the instrumented server instances (sockets and data directories). Default: `~/tmp/`.
+
+Programmatic override:
+
+```python
+gaur_sqld.configure(prefix="/my/servers/", trace_type="expert", seed=2)
+# or load a full config file:
+gaur_sqld.configure_from_file("/path/to/my.toml")
+```
+
+---
 
 
-## Other experiments 
-We present the other experiments relying on GAUR provided in [experiments](experiments/).
+## Experiments
+
+To reproduce the result of the paper, you can use the script :
+
+```bash
+python3 run_eval.py --models ae --trace-type all
+python3 run_eval.py --models ocsvm --trace-type all
+```
+
+Supplementary experiments are located in [experiments/](experiments/).
 
 ### llm-tagging
 
-This folder contains all  material for the Large Language Model tagging step described in the paper: the list of rules to tag, a script to generate textual representation of the parse tree of a query and the prompt used to instanciate the semantic model, and then attribute tags to each of the parser rule. 
+Material for the LLM-based semantic tagging of MySQL grammar rules: rule list, parse-tree generation script, and the prompts used.
 
 ### overhead-dc
-The material required for measuring the overhead of the data collection incurred by GAUR. The experiment can be setup using:
-```
-cd experiments/overhead-dc/ 
+
+Measure the data-collection overhead of GAUR:
+
+```bash
+cd experiments/overhead-dc/
 nix-build default.nix
-```
-
-This will build the two servers and generate an executable `result/bin/overhead-experiment`. It initialize the two servers, start them, and run the experiment, printing the average overhead per query for both servers.
-
-```
 ./result/bin/overhead-experiment
 ```
 
-If you are not using nix, the experiment can be conducted using the python script overhead.py. It takes 3 arguments: 
-- `--csckt`, the filepath to the socket of the instrumented MySQL server.
-- `--nsckt`, the filepath to the socket of the norma MySQL server.
-- `--dataset`, the filepath to the SQL queries dataset. A CSV file with a column named 'full_query' is expected.
+Without Nix, run `overhead.py` directly (see `--help` for arguments).
 
 ### overhead-inference
 
-This folder contains the notebook used to generate the AUROC vs Average Inference Time per query figure. It requires the path of the two files generated by our main evaluation script run_eval.py: results.csv (the detection scores) and inference.csv (the time taken for the inference step).
+Notebook generating the AUROC vs. average inference time figure. Requires `results.csv` and `inference.csv` produced by the main evaluation script.
 
 ### semantic_mutation
 
-The code for the robustness evaluation of AIDS using WAF-A-MoLE (code added as a submodule). To reproduce the results, it requires the path to the weights of a trained SecureBERT and Autoencoder and those of a GAUR (Mistral) and Autoencoder and the path to the Superviz25-SQL dataset. The script mutations.py will randomly select 100 attacks in the dataset and, given a budget, will attempt to evade detection using lexical and syntactic mutations.
+Robustness evaluation using [WAF-A-MoLE](https://github.com/AvalZ/WAF-A-MoLE). Requires trained model weights and the Superviz25-SQL dataset.
 
+---

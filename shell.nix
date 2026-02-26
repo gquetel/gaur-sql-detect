@@ -19,7 +19,6 @@ let
       };
       doCheck = false;
     };
-  # TODO, update nix expression to include WAFAMOLE.
   pythonEnv = (
     (pkgs.python313.withPackages (
       ps:
@@ -31,16 +30,19 @@ let
         # Notebooks & Visualisation
         ps.ipykernel
         ps.jupyter
+        ps.kaleido
         ps.matplotlib
         ps.plotly
+        ps.tabulate
 
         # Models
         ps.accelerate
         ps.evaluate
+        ps.scikit-learn
+        ps.scipy
+        ps.sentence-transformers
         ps.torch
         ps.transformers
-        ps.scikit-learn
-
       ]
       ++ [ mysql-connector ]
     )).override
