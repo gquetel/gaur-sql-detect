@@ -1,5 +1,6 @@
 # Core
 pandas==2.2.3
+zstandard==0.23.0
 numpy==2.2.5
 tqdm==4.67.1
 mysql-connector-python==9.3.0

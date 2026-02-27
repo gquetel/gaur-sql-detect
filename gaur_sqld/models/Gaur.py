@@ -538,7 +538,7 @@ def pre_process_for_gaur(
 
     if use_cache and os.path.isfile(fp_cache):
         logger.debug(f"Loaded GAUR features pickle located at {fp_cache}")
-        return pd.read_pickle(fp_cache)
+        return pd.read_pickle(fp_cache, compression="zstd")
 
     match mode:
         case "expert" | "ruleid" | "expert-no-const":
@@ -583,7 +583,7 @@ def pre_process_for_gaur(
         case _:
             raise ValueError(f"Unknown mode: {mode}.")
     if use_cache:
-        df_pped.to_pickle(fp_cache)
+        df_pped.to_pickle(fp_cache, compression="zstd")
 
     return df_pped
 

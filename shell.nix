@@ -26,6 +26,7 @@ let
         ps.pandas
         ps.numpy
         ps.tqdm
+        ps.zstandard # for gaur cache feature compression
 
         # Notebooks & Visualisation
         ps.ipykernel

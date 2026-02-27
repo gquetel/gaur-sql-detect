@@ -221,14 +221,14 @@ def get_traces_from_df(
 
         if os.path.isfile(fp_cache):
             logger.info(f"Loading traces from {fp_cache}")
-            return pd.read_pickle(fp_cache)
+            return pd.read_pickle(fp_cache, compression="zstd")
 
         # Or attempt to load partial file is it exists.
 
 
         if os.path.isfile(fp_cache_partial):
             logger.info(f"Loading partial results from {fp_cache_partial}")
-            partial_df = pd.read_pickle(fp_cache_partial)
+            partial_df = pd.read_pickle(fp_cache_partial, compression="zstd")
             ltraces.append(partial_df)
             start_idx = len(partial_df)
             logger.info(f"Resuming from row {start_idx}/{len(df)}")
@@ -257,7 +257,7 @@ def get_traces_from_df(
             if use_cache and ltraces:
                 partial_df = pd.concat(ltraces)
                 partial_df.index = df.index[: len(partial_df)]
-                pd.to_pickle(partial_df, fp_cache_partial)
+                pd.to_pickle(partial_df, fp_cache_partial, compression="zstd")
                 logger.info(f"Partial results saved to {fp_cache_partial}")
             raise  # Re-raise so caller knows something went wrong
 
@@ -265,7 +265,7 @@ def get_traces_from_df(
         if use_cache and i % save_interval == 0:
             partial_df = pd.concat(ltraces)
             partial_df.index = df.index[: len(partial_df)]
-            pd.to_pickle(partial_df, fp_cache_partial)
+            pd.to_pickle(partial_df, fp_cache_partial, compression="zstd")
             logger.info(f"Progress checkpoint saved at row {i+1}/{len(df)}")
 
     df_traces = pd.concat(ltraces)
@@ -288,6 +288,9 @@ def get_traces_from_df(
         logger.info("Successfully collected a semantic_tree for each query.")
 
     if use_cache:
-        df_traces.to_pickle(fp_cache)
+        df_traces.to_pickle(fp_cache, compression="zstd")
+        if os.path.isfile(fp_cache_partial):
+            os.remove(fp_cache_partial)
+            logger.info(f"Removed partial cache file {fp_cache_partial}")
 
     return df_traces
