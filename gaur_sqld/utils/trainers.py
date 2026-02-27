@@ -657,15 +657,36 @@ def train_models(
             for model_name, model_fn in models.items():
                 if "ruleid" in model_name:
                     continue  # skip ruleid models here
+                res_start = len(training_results)
+                inf_start = len(inference_times)
                 labels, scores, returned_name = model_fn(df, trace)
                 model_output[returned_name] = (labels, scores)
+
+                # Save per-model results (safe for concurrent NFS writers).
+                trace_out = config.ppths.trace_type_output_path
+                pd.DataFrame(training_results[res_start:]).to_csv(
+                    f"{trace_out}results-{model_name}.csv", index=False
+                )
+                pd.DataFrame(inference_times[inf_start:]).to_csv(
+                    f"{trace_out}inference-{model_name}.csv", index=False
+                )
 
         # We train ruleids models outside the loop and they require the expert trace.
         gaur_sqld.update_location_mysqlfiles("expert")
 
         for model_name, model_fn in ruleid_models.items():
+            res_start = len(training_results)
+            inf_start = len(inference_times)
             labels, scores, returned_name = model_fn(df, "ruleid")
             model_output[returned_name] = (labels, scores)
+
+            trace_out = config.ppths.trace_type_output_path
+            pd.DataFrame(training_results[res_start:]).to_csv(
+                f"{trace_out}results-{model_name}.csv", index=False
+            )
+            pd.DataFrame(inference_times[inf_start:]).to_csv(
+                f"{trace_out}inference-{model_name}.csv", index=False
+            )
 
         labels_list = [labels for labels, _ in model_output.values()]
         scores_list = [scores for _, scores in model_output.values()]
@@ -690,12 +711,11 @@ def train_models(
             l_model_names=names_list,
         )
 
-        # Finally, save results to csv.
+        # Save aggregate results across all trace types.
         dfres = pd.DataFrame(training_results)
         filename = f"{config.ppths.output_path}/results.csv"
         dfres.to_csv(filename, index=False)
 
-        # Also save inference time.
         dfinf = pd.DataFrame(inference_times)
         fp = config.ppths.inference_filepath + "/inference.csv"
         dfinf.to_csv(fp, index=False)

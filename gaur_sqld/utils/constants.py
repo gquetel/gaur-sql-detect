@@ -24,12 +24,12 @@ class ProjectPaths:
         self.trace_type = "expert"
         self.output_subfolder = None
 
-        # Paths to search for saved models. We study SecureBERT models in notebooks,
-        # some are on a different folders. We can append entries using add_model_path()
-        self._models_paths = [f"{self.base_path}/output/models/"]
+        # Extra paths to search for saved models (e.g. pre-trained models in notebooks).
+        # The primary save path is derived from trace_type at runtime via models_paths.
+        self._extra_models_paths = []
 
     def add_model_path(self, path: str):
-        self._models_paths.append(path)
+        self._extra_models_paths.append(path)
 
     def set_trace_type(self, trace_type: str):
         self.trace_type = trace_type
@@ -71,14 +71,23 @@ class ProjectPaths:
         return path
 
     @property
+    def trace_type_output_path(self) -> str:
+        path = f"{self.base_path}/output/{self.trace_type}/"
+        Path(path).mkdir(exist_ok=True, parents=True)
+        return path
+
+    @property
     def models_paths(self) -> list[str]:
-        for path in self._models_paths:
+        primary = f"{self.base_path}/output/{self.trace_type}/models/"
+        paths = [primary] + self._extra_models_paths
+        result = []
+        for path in paths:
             try:
                 Path(path).mkdir(exist_ok=True, parents=True)
-            except FileNotFoundError as e:
+                result.append(path)
+            except FileNotFoundError:
                 logger.warning(f"Couldn't create folder ", path)
-                self._models_paths.remove(path)
-        return self._models_paths
+        return result
 
     @property
     def embeddings_path(self) -> str:

@@ -308,7 +308,7 @@ def compute_per_feature_RE(
     mean_errors = (total_squared_error / total_samples).cpu().numpy()
     per_feature_error = pd.Series(mean_errors, index=columns_name, name="MSE")
 
-    folder_name = f"{config.ppths.output_path}per_feature_mse/"
+    folder_name = f"{config.ppths.trace_type_output_path}per_feature_mse/"
     Path(folder_name).mkdir(exist_ok=True, parents=True)
     save_path = Path(folder_name) / f"{model_name}_per_feature_mse.csv"
     per_feature_error.to_csv(save_path, index=True)
