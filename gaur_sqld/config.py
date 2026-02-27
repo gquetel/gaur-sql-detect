@@ -108,7 +108,10 @@ def configure_from_file(path: str) -> None:
 
 # ------------ Dynamic configuration  ------------
 # Root path, where output/ or logs/ folders will be created.
-base_path = os.path.join(os.path.dirname(__file__), "../")
+# Use the working directory of the calling script so that cache/output/logs
+# are always written to a writable location (avoids issues with read-only
+# install paths such as the Nix store).
+base_path = os.getcwd()
 
 # Bootstrap a custom object path. Access this object from any file using:
 # > import gaur_sqld.config as config
