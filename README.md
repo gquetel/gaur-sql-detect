@@ -20,6 +20,11 @@ Alternatively, you could manually patch, build, initialize and run a MySQL serve
 pip install -e .
 ```
 
+Then, to be able to save figures using plotly and kaleido. Run: 
+```bash
+plotly_get_chrome
+```
+
 ### Dataset
 We used the [Superviz25-SQL](https://zenodo.org/records/17086037) dataset. By default, it is expected at `./data/dataset.csv`.
 
