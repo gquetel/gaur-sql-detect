@@ -1,10 +1,8 @@
 # GAUR-SQL-Detect
 
-Code for the evaluations presented in:
+Code for the evaluations presented in our paper: **Parser Instrumentation for Semantic-Aware Applicative Intrusion Detection**. Published in 41st International Conference on ICT Systems Security and Privacy Protection (IFIPSEC26), 2026. Recommended citation:
 
-> Grégor Quetel, Pierre-François Gimenez, Thomas Robert, Laurent Pautet.
-> **Parser Instrumentation for Semantic-Aware Applicative Intrusion Detection**
-> IFIP SEC 2025, June 2026, Perth, Australia.
+> Quetel, G., Gimenez, P. F., Robert, T. & Pautet, L. (2026 June). Parser Instrumentation for Semantic-Aware Applicative Intrusion Detection. In the 41st International Conference on ICT Systems Security and Privacy Protection (IFIPSEC26) 
 
 This repository relies on instrumented MySQL servers built with [gaur](https://github.com/gquetel/gaur), available from [gaur-instrumented-apps](https://github.com/gquetel/gaur-instrumented-apps).
 
