@@ -2,6 +2,7 @@
 
 import logging
 import shutil
+import socket
 import subprocess
 from pathlib import Path
 
@@ -35,8 +36,16 @@ class GaurServerManager:
         self.socket_path = cfg.mysql_info.socket_path
 
     def _server_is_running(self) -> bool:
-        """Return True if the MySQL socket file already exists."""
-        return Path(self.socket_path).exists()
+        """Return True if the MySQL socket file exists and accepts connections."""
+        if not Path(self.socket_path).exists():
+            return False
+        try:
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
+                sock.settimeout(1)
+                sock.connect(self.socket_path)
+            return True
+        except OSError:
+            return False
 
     def _log_output(self, stdout: str, stderr: str) -> None:
         for line in stdout.splitlines():
