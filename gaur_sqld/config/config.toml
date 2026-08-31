@@ -8,3 +8,6 @@ user = "tata"
 password = "tata"
 prefix = "~/tmp/"
 
+[collection]
+# Processes used to collect traces; -1 selects serial or per-logical-CPU mode.
+n_workers = -1

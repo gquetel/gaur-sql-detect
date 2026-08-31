@@ -28,6 +28,9 @@ let
         ps.tqdm
         ps.zstandard # for gaur cache feature compression
 
+        # Testing
+        ps.pytest
+
         # Notebooks & Visualisation
         ps.ipykernel
         ps.jupyter
