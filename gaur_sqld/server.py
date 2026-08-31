@@ -1,6 +1,7 @@
 """Auto-provisioning of the GAUR-instrumented MySQL server."""
 
 import logging
+import os
 import shutil
 import socket
 import subprocess
@@ -9,7 +10,12 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 GAUR_APPS_REPO = "https://github.com/gquetel/gaur-instrumented-apps"
-GAUR_APPS_DIR = Path.home() / ".local" / "share" / "gaur-sqld" / "gaur-instrumented-apps"
+# Override to point the builder at a different gaur-instrumented-apps checkout
+# (e.g. one on a feature branch) without touching the auto-cloned default.
+GAUR_APPS_DIR = Path(
+    os.environ.get("GAUR_APPS_DIR")
+    or Path.home() / ".local" / "share" / "gaur-sqld" / "gaur-instrumented-apps"
+)
 
 
 class GaurServerError(RuntimeError):
