@@ -54,6 +54,12 @@ features = gaur_sqld.pre_process_for_gaur(traces, mode="expert")
 
 If neither condition is met, a `GaurServerError` is raised with instructions for manual setup.
 
+For collections over 5000 queries, `get_traces_from_df()` uses one process and one server-side trace log (`gaur.<connection_id>.log`) per `n_workers`. Default value is set to `-1` which means it will use as many processes as there is CPU cores.
+
+### Schema requirement
+
+Use the empty `dataset` schema created by `run-server`. Populated schemas can add trigger and view parser traces to the user query and change the resulting features.
+
 ---
 
 ### Configuration

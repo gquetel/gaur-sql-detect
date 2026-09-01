@@ -11,6 +11,9 @@ ExistingTraces = Literal[
     "expert", "chatgpt", "claude", "gpt-oss", "llama", "mistral"
 ]
 
+# Fallback used when a configuration file omits the collection setting.
+DEFAULT_N_WORKERS = -1
+
 
 def _load_config() -> dict:
     """Load bundled default configuration."""
@@ -27,6 +30,11 @@ seed = _generic.get("seed", 7)
 # Default trace type, given by config file.
 trace_type = _generic.get("trace_type", "expert")
 mysql_info = DotDict(raw_cfg.get("mysql", {}))
+
+# Processes used to collect traces. -1 stays sequential and single threaded
+# on small collections and spreads across processes once the run is long enough 
+# for the pool to pay for itself. 
+n_workers = raw_cfg.get("collection", {}).get("n_workers", DEFAULT_N_WORKERS)
 
 # Expand ~ in prefix
 if "prefix" in mysql_info:
@@ -59,6 +67,7 @@ def configure(
     prefix: str | None = None,
     trace_type: str | None = None,
     seed: int | None = None,
+    n_workers: int | None = None,
 ) -> None:
     """Programmatically override configuration values.
 
@@ -68,6 +77,9 @@ def configure(
         trace_type: Default trace type to use
             ('expert', 'chatgpt', 'claude', 'gpt-oss', 'llama', 'mistral').
         seed: Random seed for reproducibility.
+        n_workers: Processes used to collect traces, or -1 to decide
+            automatically. Anything above 1 requires a server built with
+            per-connection trace logs.
     """
     import gaur_sqld.config as _cfg
 
@@ -80,6 +92,14 @@ def configure(
 
     if seed is not None:
         _cfg.seed = seed
+
+    if n_workers is not None:
+        if n_workers < 1 and n_workers != DEFAULT_N_WORKERS:
+            raise ValueError(
+                f"n_workers must be >= 1 or {DEFAULT_N_WORKERS} (auto), "
+                f"got {n_workers}"
+            )
+        _cfg.n_workers = n_workers
 
 
 def configure_from_file(path: str) -> None:
@@ -98,6 +118,9 @@ def configure_from_file(path: str) -> None:
     generic = raw.get("generic", {})
     _cfg.seed = generic.get("seed", 7)
     _cfg.trace_type = generic.get("trace_type", "expert")
+    _cfg.n_workers = raw.get("collection", {}).get(
+        "n_workers", DEFAULT_N_WORKERS
+    )
 
     _cfg.mysql_info = DotDict(raw.get("mysql", {}))
     if "prefix" in _cfg.mysql_info:

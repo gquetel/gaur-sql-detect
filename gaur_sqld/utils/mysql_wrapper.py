@@ -76,6 +76,7 @@ class SQLConnector:
                     1242,  # Subquery returns more than 1 row
                     1248,  # Every derived table must have its own alias
                     1264,  # Value out of range
+                    1265,  # Data truncated for column
                     1288,  # The target table is not updatable
                     1292,  # Truncated incorrect double value
                     1305,  # Procedure/function unknown
@@ -87,6 +88,7 @@ class SQLConnector:
                     1406,  #  Data too long
                     1451,
                     1452,  # Cannot add or update a child row
+                    1525,  # Incorrect DATETIME value
                     1582,  # Incorrect parameters
                     1584,  # Incorrect parameters
                     1630,  # Function does not exists.

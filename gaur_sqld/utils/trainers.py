@@ -31,7 +31,6 @@ logger = logging.getLogger(__name__)
 def get_traces_per_split(
     df: pd.DataFrame,
     use_cache: bool,
-    use_datadir: bool,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Collect traces per split to enable cross-run cache reuse.
     
@@ -46,9 +45,7 @@ def get_traces_per_split(
         df_split = df[df["split"] == split_name]
         if len(df_split) == 0:
             continue
-        traces = get_traces_from_df(
-            df=df_split, use_cache=use_cache, use_datadir=use_datadir
-        )
+        traces = get_traces_from_df(df=df_split, use_cache=use_cache)
         merged = pd.concat([traces, df_split], axis=1, join="inner")
         l_traces.append(merged)
 
@@ -405,9 +402,7 @@ def train_lof_gaur(
         use_hybrid=use_hybrid,
     )
 
-    df_train, df_test, df_val = get_traces_per_split(
-        df, use_cache=args.use_cache, use_datadir=args.use_datadir
-    )
+    df_train, df_test, df_val = get_traces_per_split(df, use_cache=args.use_cache)
 
     model.train_model(
         df=df_train,
@@ -456,9 +451,7 @@ def train_ocsvm_gaur(
         mode=mode,
     )
 
-    df_train, df_test, df_val = get_traces_per_split(
-        df, use_cache=args.use_cache, use_datadir=args.use_datadir
-    )
+    df_train, df_test, df_val = get_traces_per_split(df, use_cache=args.use_cache)
 
     model.train_model(
         df=df_train,
@@ -511,9 +504,7 @@ def train_ae_gaur(
         use_cache=True,
     )
 
-    df_train, df_test, df_val = get_traces_per_split(
-        df, use_cache=args.use_cache, use_datadir=args.use_datadir
-    )
+    df_train, df_test, df_val = get_traces_per_split(df, use_cache=args.use_cache)
 
     model.train_model(df=df_train, model_name=model_name)
 

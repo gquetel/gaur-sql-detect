@@ -38,12 +38,6 @@ class ProjectPaths:
         self.output_subfolder = subfolder
 
     @property
-    def cache_datadir_path(self) -> str:
-        path = f"{self.base_path}/cache/{self.trace_type}/"
-        Path(path).mkdir(exist_ok=True, parents=True)
-        return path
-
-    @property
     def cache_path(self) -> str:
         path = f"{self.base_path}/cache/{self.trace_type}/"
         Path(path).mkdir(exist_ok=True, parents=True)
