@@ -603,7 +603,9 @@ def select_trace_types(args: argparse.Namespace) -> list:
     if "all" in args.trace_type:
         return ["expert", "claude", "chatgpt", "llama", "mistral", "gpt-oss"]
 
-    for item in modes:
+    # Iterate over a copy: removing from modes while iterating over it would
+    # skip the entry right after each removed one.
+    for item in list(modes):
         if item not in valid_traces:
             logger.warning(f"Unrecognized trace type: {item}.")
             modes.remove(item)
