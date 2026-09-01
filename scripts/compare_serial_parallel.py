@@ -19,7 +19,7 @@ import time
 import pandas as pd
 
 from gaur_sqld import config as cfg
-from gaur_sqld.server import stop_server
+from gaur_sqld.server import ensure_server, stop_server
 from gaur_sqld.utils.traces_collector import get_traces_from_df
 
 DATASETS = ["a-a", "b-b", "c-c", "d-d"]
@@ -56,6 +56,10 @@ def load_test_rows(name: str, n: int) -> pd.DataFrame:
 
 def run(df: pd.DataFrame, n_workers: int, label: str) -> tuple[pd.DataFrame, float]:
     stop_server(cfg.trace_type)
+    # Start the server outside the timed region: get_traces_from_df() calls
+    # ensure_server() itself, and the Nix script reinitialises the datadir,
+    # which would otherwise be counted as collection time.
+    ensure_server(cfg.trace_type)
     t0 = time.time()
     traces = get_traces_from_df(df, use_cache=False, disable_tqdm=False, n_workers=n_workers)
     dt = time.time() - t0

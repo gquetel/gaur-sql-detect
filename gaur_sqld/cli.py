@@ -65,13 +65,6 @@ def init_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        "--use-datadir",
-        action="store_true",
-        dest="use_datadir",
-        help="Use the cache_datadir_path instead of cache_path for the cache mechanism.",
-    )
-
-    parser.add_argument(
         "--dataset",
         type=str,
         dest="dataset",

@@ -403,7 +403,6 @@ def _resolve_n_workers(n_workers: int, n_rows: int) -> int:
 def get_traces_from_df(
     df: pd.DataFrame,
     use_cache: bool = True,
-    use_datadir: bool = True,
     disable_tqdm: bool = False,
     n_workers: int | None = None,
 ) -> pd.DataFrame:
@@ -417,9 +416,7 @@ def get_traces_from_df(
         pd.util.hash_pandas_object(df, index=True).values
     ).hexdigest()
 
-    cache_dir = (
-        config.ppths.cache_datadir_path if use_datadir else config.ppths.cache_path
-    )
+    cache_dir = config.ppths.cache_path
 
     if use_cache:
         fp_cache = f"{cache_dir}{str_hash_df}.pkl"
