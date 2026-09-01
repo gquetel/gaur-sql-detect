@@ -1,7 +1,24 @@
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 import logging
+import tomllib
 
 logger = logging.getLogger(__name__)
+
+
+def _read_project_version() -> str:
+    """Read the package version, its single source of truth in pyproject.toml."""
+    try:
+        return version("gaur-sql-detect")
+    except PackageNotFoundError:
+        fp_pyproject = Path(__file__).resolve().parents[2] / "pyproject.toml"
+        with open(fp_pyproject, "rb") as f:
+            return tomllib.load(f)["project"]["version"]
+
+
+# Defined here, not in gaur_sqld/__init__.py, so the cache path below can use
+# it without a circular import; gaur_sqld/__init__.py re-exports it.
+__version__ = _read_project_version()
 
 
 class DotDict(dict):
@@ -39,7 +56,10 @@ class ProjectPaths:
 
     @property
     def cache_path(self) -> str:
-        path = f"{self.base_path}/cache/{self.trace_type}/"
+        # The version is part of the path so a shape change to a cached
+        # object (trace, partial chunk, or feature pickle) cannot be loaded
+        # as if it were still the old shape.
+        path = f"{self.base_path}/cache/{self.trace_type}/{__version__}/"
         Path(path).mkdir(exist_ok=True, parents=True)
         return path
 

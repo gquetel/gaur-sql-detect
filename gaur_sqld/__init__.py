@@ -1,5 +1,4 @@
-__version__ = "0.2.0"
-
+from .utils.constants import __version__
 from .config import (
     configure,
     configure_from_file,

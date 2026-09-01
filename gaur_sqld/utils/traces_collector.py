@@ -40,6 +40,9 @@ LOG_NUMERIC_COLUMNS = [
     "depth",
 ]
 
+# One row per collected query always carries this schema.
+TRACE_COLUMNS = LOG_COLUMNS + ["n_parser_invoc"]
+
 # Large serialized trees can exceed csv's default field limit.
 csv.field_size_limit(min(sys.maxsize, 2**31 - 1))
 
@@ -56,18 +59,43 @@ CHUNKS_PER_WORKER = 4
 
 
 def _rows_to_frame(rows: list, header: list) -> pd.DataFrame:
-    """Build a trace frame from CSV rows, matching ``pd.read_csv`` dtypes."""
+    """Build a trace frame from rows read with ``csv.reader``."""
     df = pd.DataFrame(rows, columns=header)
 
     for column in LOG_NUMERIC_COLUMNS:
         if column in df.columns:
-            # Match read_csv: empty numeric fields become NaN.
+            # Empty numeric fields become NaN.
             df[column] = pd.to_numeric(df[column], errors="coerce")
 
+    if "is_syntax_error" in df.columns:
+        df["is_syntax_error"] = df["is_syntax_error"].astype(int)
+
     if "semantic_tree" in df.columns:
-        df["semantic_tree"] = df["semantic_tree"].replace("", np.nan)
+        # "||-||" is the empty tree, to match merge_traces contract requiring 2 parts.
+        df["semantic_tree"] = df["semantic_tree"].replace("", "||-||")
 
     return df
+
+
+def _failed_trace_frame() -> pd.DataFrame:
+    """Return the one-row trace for a query that could not be traced.
+
+    n_parser_invoc is 0, which never happens for a real trace, so it is the
+    failure marker downstream code keys on. is_syntax_error stays 0: this
+    marks an error we have not classified, not necessarily a syntax error.
+    """
+    return pd.DataFrame(
+        {
+            "query_id": [pd.NA],
+            "n_terminal": [0],
+            "n_nonterminal": [0],
+            "is_syntax_error": [0],
+            "semantic_tree": ["||-||"],
+            "depth": [0],
+            "n_parser_invoc": [0],
+        },
+        index=[0],
+    )
 
 
 class GaurTraceCollector:
@@ -162,7 +190,7 @@ def merge_traces(df_traces: pd.DataFrame, query: str) -> pd.DataFrame:
     n_nonterminal = df_traces["n_nonterminal"].sum()
     depth = df_traces["depth"].sum()
     n_parser_invoc = df_traces.shape[0]
-    is_syntax_error = (df_traces["is_syntax_error"] == 1).any()
+    is_syntax_error = int((df_traces["is_syntax_error"] == 1).any())
 
     nodes = []
     edges = []
@@ -205,7 +233,7 @@ def merge_traces(df_traces: pd.DataFrame, query: str) -> pd.DataFrame:
 def get_traces_from_query(
     query: str, sqlc: SQLConnector, gtc: GaurTraceCollector
 ) -> pd.DataFrame:
-    """Execute a query and return its GAUR trace."""
+    """Execute a query and return its GAUR trace: exactly one row, always."""
 
     if sqlc.cnx is None or not sqlc.cnx.is_connected():
         # Connection setup creates parser invocations; clear them below.
@@ -220,22 +248,13 @@ def get_traces_from_query(
 
     if retcode == 1:
         gtc.reset_logfile()
-
-        # Keep the row so callers can remove it after collection.
-        return pd.DataFrame(
-            {
-                "query_id": pd.NA,
-                "n_terminal": pd.NA,
-                "n_nonterminal": pd.NA,
-                "is_syntax_error": pd.NA,
-                "semantic_tree": pd.NA,
-                "depth": pd.NA,
-                "n_parser_invoc": pd.NA,
-            },
-            index=[0],
-        )
+        return _failed_trace_frame()
 
     df_traces = gtc.collect_logfile()
+
+    if df_traces.empty:
+        # The query ran but logged no parser invocation.
+        return _failed_trace_frame()
 
     # Merge traces from stacked queries.
     if df_traces.shape[0] > 1:
@@ -340,11 +359,17 @@ def _collect_chunk(
 
     save_interval = max(1, len(chunk) // 10)
 
-    def checkpoint(reason: str) -> None:
+    def checkpoint(reason: str, count: int) -> None:
         if not (use_cache and ltraces):
             return
         partial_df = pd.concat(ltraces)
-        partial_df.index = chunk.index[: len(partial_df)]
+        if len(partial_df) != count:
+            raise RuntimeError(
+                f"Expected {count} trace rows for {fp_partial}, got "
+                f"{len(partial_df)}; every input row must yield exactly one "
+                "trace row."
+            )
+        partial_df.index = chunk.index[:count]
         pd.to_pickle(partial_df, fp_partial, compression="zstd")
         logger.info(f"{reason} saved to {fp_partial}")
 
@@ -359,14 +384,14 @@ def _collect_chunk(
             except mysql.connector.errors.InterfaceError as e:
                 logger.error(f"MySQL interface error on row {i}: {e}")
                 # Preserve completed rows before propagating the error.
-                checkpoint("Partial results")
+                checkpoint("Partial results", i)
                 raise
             finally:
                 if on_row is not None:
                     on_row()
 
             if use_cache and i % save_interval == 0:
-                checkpoint(f"Progress checkpoint at row {i + 1}/{len(chunk)}")
+                checkpoint(f"Progress checkpoint at row {i + 1}/{len(chunk)}", i + 1)
     except BaseException:
         # Drop the chunk's connection after a failure.
         _close_worker_conn()
@@ -425,7 +450,7 @@ def get_traces_from_df(
             return pd.read_pickle(fp_cache, compression="zstd")
 
     if len(df) == 0:
-        return pd.DataFrame(columns=LOG_COLUMNS + ["n_parser_invoc"], index=df.index)
+        return pd.DataFrame(columns=TRACE_COLUMNS, index=df.index)
 
     # Start the server before creating workers.
     ensure_server(config.trace_type)
@@ -518,10 +543,15 @@ def get_traces_from_df(
     positions = []
     for chunk_id in sorted(results):
         df_chunk = results[chunk_id]
-        if df_chunk.empty:
-            continue
+        expected_positions = chunk_positions[chunk_id]
+        if len(df_chunk) != len(expected_positions):
+            raise RuntimeError(
+                f"Chunk {chunk_id} returned {len(df_chunk)} trace rows for "
+                f"{len(expected_positions)} input rows; every input row must "
+                "yield exactly one trace row."
+            )
         frames.append(df_chunk)
-        positions.append(chunk_positions[chunk_id][: len(df_chunk)])
+        positions.append(expected_positions)
 
     df_traces = pd.concat(frames, ignore_index=True)
     pos = np.concatenate(positions)
@@ -529,16 +559,9 @@ def get_traces_from_df(
     df_traces = df_traces.iloc[order]
     df_traces.index = df.index[pos[order]]
 
-    # Remove queries for which no semantic tree was collected.
-
-    missing_mask = df_traces["semantic_tree"].isnull()
-    num_missing = missing_mask.sum()
-
-    if num_missing > 0:
-        logger.critical(f"Removed {num_missing} queries with missing semantic_tree.")
-        df_traces = df_traces[~missing_mask]
-    else:
-        logger.info("Successfully collected a semantic_tree for each query.")
+    num_failed = (df_traces["n_parser_invoc"] == 0).sum()
+    if num_failed > 0:
+        logger.info(f"{num_failed} queries failed to collect a trace.")
 
     if use_cache:
         df_traces.to_pickle(fp_cache, compression="zstd")

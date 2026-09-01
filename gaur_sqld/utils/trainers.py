@@ -46,7 +46,13 @@ def get_traces_per_split(
         if len(df_split) == 0:
             continue
         traces = get_traces_from_df(df=df_split, use_cache=use_cache)
-        merged = pd.concat([traces, df_split], axis=1, join="inner")
+        if len(traces) != len(df_split):
+            raise RuntimeError(
+                f"Collected {len(traces)} traces for {len(df_split)} rows in "
+                f"the '{split_name}' split; every input row must yield "
+                "exactly one trace row."
+            )
+        merged = pd.concat([traces, df_split], axis=1)
         l_traces.append(merged)
 
     df_merged = pd.concat(l_traces)
