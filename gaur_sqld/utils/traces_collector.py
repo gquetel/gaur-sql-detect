@@ -271,6 +271,13 @@ def _partial_path(base_dir: str, str_hash_df: str, chunk_id: int, n_chunks: int)
     return f"{base_dir}{str_hash_df}-partial-w{chunk_id}of{n_chunks}.pkl"
 
 
+def _resume_count(fp_partial: str) -> int:
+    """Return the number of rows already cached in a partial-results file."""
+    if not os.path.isfile(fp_partial):
+        return 0
+    return len(pd.read_pickle(fp_partial, compression="zstd"))
+
+
 # Reuse one connection per worker across chunks.
 _worker_conn_state: tuple | None = None
 
@@ -353,13 +360,12 @@ def _collect_chunk(
         partial_df = pd.read_pickle(fp_partial, compression="zstd")
         ltraces.append(partial_df)
         start_idx = len(partial_df)
-        logger.info(f"Resuming from row {start_idx}/{len(chunk)} of {fp_partial}")
 
     sqlc, gtc = _worker_conn(log_mode)
 
     save_interval = max(1, len(chunk) // 10)
 
-    def checkpoint(reason: str, count: int) -> None:
+    def checkpoint(count: int) -> None:
         if not (use_cache and ltraces):
             return
         partial_df = pd.concat(ltraces)
@@ -371,7 +377,6 @@ def _collect_chunk(
             )
         partial_df.index = chunk.index[:count]
         pd.to_pickle(partial_df, fp_partial, compression="zstd")
-        logger.info(f"{reason} saved to {fp_partial}")
 
     try:
         for i, row in enumerate(chunk.itertuples(index=False)):
@@ -384,14 +389,15 @@ def _collect_chunk(
             except mysql.connector.errors.InterfaceError as e:
                 logger.error(f"MySQL interface error on row {i}: {e}")
                 # Preserve completed rows before propagating the error.
-                checkpoint("Partial results", i)
+                checkpoint(i)
+                logger.info(f"Partial results saved to {fp_partial}")
                 raise
             finally:
                 if on_row is not None:
                     on_row()
 
             if use_cache and i % save_interval == 0:
-                checkpoint(f"Progress checkpoint at row {i + 1}/{len(chunk)}", i + 1)
+                checkpoint(i + 1)
     except BaseException:
         # Drop the chunk's connection after a failure.
         _close_worker_conn()
@@ -487,6 +493,13 @@ def get_traces_from_df(
         chunk_positions = [np.arange(k, len(df), n_chunks) for k in range(n_chunks)]
 
     n_chunks = len(chunk_positions)
+    partial_paths = [_partial_path(cache_dir, str_hash_df, k, n_chunks) for k in range(n_chunks)]
+
+    if use_cache:
+        n_resumed = sum(_resume_count(p) for p in partial_paths)
+        if n_resumed:
+            logger.info(f"Resuming from cache: {n_resumed}/{len(df)} rows already collected")
+
     progress = tqdm(total=len(df), disable=disable_tqdm)
     results: dict[int, pd.DataFrame] = {}
 
@@ -497,20 +510,18 @@ def get_traces_from_df(
         if n_chunks == 1:
             results[0] = _collect_chunk(
                 df,
-                _partial_path(cache_dir, str_hash_df, 0, 1),
+                partial_paths[0],
                 use_cache,
                 log_mode,
                 lambda: progress.update(1),
             )
         else:
-            logger.info(
-                f"Collecting with {n_workers} processes over {n_chunks} chunks"
-            )
+            logger.info(f"Collecting with {n_workers} processes")
             tasks = [
                 (
                     k,
                     df.iloc[chunk_positions[k]],
-                    _partial_path(cache_dir, str_hash_df, k, n_chunks),
+                    partial_paths[k],
                     use_cache,
                     log_mode,
                 )
@@ -565,10 +576,8 @@ def get_traces_from_df(
 
     if use_cache:
         df_traces.to_pickle(fp_cache, compression="zstd")
-        for k in range(n_chunks):
-            fp_partial = _partial_path(cache_dir, str_hash_df, k, n_chunks)
+        for fp_partial in partial_paths:
             if os.path.isfile(fp_partial):
                 os.remove(fp_partial)
-                logger.info(f"Removed partial cache file {fp_partial}")
 
     return df_traces
